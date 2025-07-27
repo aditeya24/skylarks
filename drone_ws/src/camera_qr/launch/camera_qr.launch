@@ -1,0 +1,5 @@
+<launch>
+    <node name="camera_publisher" pkg="camera_qr" type="camera_publisher.py" output="screen"/>
+    <node name="qr_detector" pkg="camera_qr" type="qr_detector.py" output="screen"/>
+</launch>
+

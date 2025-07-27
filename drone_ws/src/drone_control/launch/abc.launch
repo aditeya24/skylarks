@@ -1,0 +1,4 @@
+<?xml version="1.0"?>
+<launch>
+    <node pkg="drone_control" type="mavros_test.py" name="test" output="screen"/>
+</launch>
