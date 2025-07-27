@@ -1,0 +1,15 @@
+[Unit]
+Description=Raspberry Pi Camera Stream via GStreamer
+After=network.target
+
+[Service]
+EnvironmentFile=/etc/stream-env
+ExecStart=/usr/bin/gst-launch-1.0 -v v4l2src device=/dev/video3 ! videoconvert ! x264enc bitrate=500 speed-preset=superfast tune=zerolatency ! rtph264pay ! udpsink host=100.83.35.48 port=5000
+Restart=always
+User=pi
+Group=pi
+StandardOutput=append:/var/log/stream.log
+StandardError=append:/var/log/stream.err
+
+[Install]
+WantedBy=multi-user.target
