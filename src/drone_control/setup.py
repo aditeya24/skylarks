@@ -14,12 +14,13 @@ setup(
     install_requires=['setuptools'],
     zip_safe=True,
     maintainer='aditeya24',
-    maintainer_email='aditeya24@todo.todo',
+    maintainer_email='aditeyajfrankur@gmail.com',
     description='TODO: Package description',
-    license='Apache-2.0',
-    tests_require=['pytest'],
+    license='TODO: License declaration',
     entry_points={
         'console_scripts': [
+            'drone_controller = drone_control.drone_controller:main',
+            'mock_mavros = drone_control.mock_mavros:main',
         ],
     },
 )
