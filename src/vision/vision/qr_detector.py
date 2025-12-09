@@ -1,6 +1,9 @@
 #!/usr/bin/env python3
 import rclpy
 from rclpy.node import Node
+import cv2
+import numpy as np
+from pyzbar.pyzbar import decode
 from interfaces.msg import TargetDeviation
 
 class QRDetector(Node):
