@@ -17,7 +17,7 @@ class DroneController(Node):
         self.local_pos_sub = self.create_subscription(
             PoseStamped, '/mavros/local_position/pose', self.pos_cb, 10)
         self.vision_sub = self.create_subscription(
-            TargetDeviation, '/vision/target_deviation', self.vision_cb, 10)
+            TargetDeviation, '/vision/target_deviation', self.vision_cb, 1)
 
         # Publishers
         self.local_pos_pub = self.create_publisher(
