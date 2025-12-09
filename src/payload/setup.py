@@ -16,7 +16,7 @@ setup(
     maintainer='aditeya24',
     maintainer_email='aditeyajfrankur@gmail.com',
     description='TODO: Package description',
-    license='TODO: License declaration',
+    license='Apache License 2.0',
     entry_points={
         'console_scripts': [
             'payload_driver = payload.payload_driver:main',
