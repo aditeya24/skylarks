@@ -32,16 +32,26 @@ class QRDetector(Node):
         if not ret:
             return
 
-        qr_codes = decode(frame)
+        gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
+        qr_codes = decode(gray)
+
         msg = TargetDeviation()
+        
         if qr_codes:
             qr = qr_codes[0]
-            qr_data = qr.data.decode("utf-8")
-            self.get_logger().info(f'QR Code: {qr_data}')
             msg.detected = True
-            msg.qr_data = qr_data
+            msg.qr_data = qr.data.decode("utf-8")
+            
+            self.get_logger().info(f'QR Code: {msg.qr_data}')
+             
 
-            self.publisher_.publish(msg)
+        else:
+            msg.detected = False
+            msg.x_error = 0.0
+            msg.y_error = 0.0
+            msg.qr_data = ""
+
+        self.publisher_.publish(msg)
 
     def destroy_node(self):
         if self.cap.isOpened():
