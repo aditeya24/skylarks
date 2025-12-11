@@ -18,14 +18,6 @@ class QRDetector(Node):
         self.timer = self.create_timer(0.033, self.timer_callback)
         self.get_logger().info('QR Detector Node Started')
 
-    def publish_mock_data(self):
-        msg = TargetDeviation()
-        msg.detected = True
-        msg.x_error = 0.1
-        msg.y_error = -0.05
-        msg.qr_data = "PAYLOAD_TARGET_A"
-        self.publisher_.publish(msg)
-
     def timer_callback(self):
         if not os.path.exists(self.device_path):
             self.get_logger().warn(f"Waiting for {self.device_path}...", throttle_duration_sec=1.0)
