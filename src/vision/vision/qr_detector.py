@@ -13,7 +13,7 @@ class QRDetector(Node):
         self.publisher_ = self.create_publisher(TargetDeviation, '/vision/target_deviation', 1)
         
         self.cap = None
-        self.device_path = '/dev/video11'
+        self.device_path = '/dev/video41'
 
         self.timer = self.create_timer(0.033, self.timer_callback)
         self.get_logger().info('QR Detector Node Started')
