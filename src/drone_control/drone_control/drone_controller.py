@@ -7,6 +7,16 @@ from mavros_msgs.msg import State
 from interfaces.msg import TargetDeviation
 from interfaces.action import DropPayload
 
+class States(Enum):
+    INIT = auto()
+    TAKEOFF = auto()
+    TRANSIT = auto()
+    SEARCH = auto()
+    ALIGN = auto()
+    LAND = auto()
+    DROP = auto()
+    RTL = auto()
+
 class DroneController(Node):
     def __init__(self):
         super().__init__('drone_controller')
