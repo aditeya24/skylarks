@@ -33,8 +33,10 @@ class DroneController(Node):
         # Action Client
         self._payload_client = ActionClient(self, DropPayload, '/payload/drop')
 
+        self.timer = create_timer(0.05, self.control_loop)
         self.get_logger().info('Drone Controller Node Started')
 
+    # Callbacks
     def state_cb(self, msg): 
         self.current_state = msg
 
@@ -44,6 +46,52 @@ class DroneController(Node):
     def vision_cb(self, msg): 
         self.vision_data = msg
 
+    # Main loop
+    def control_loop(self):
+        if init:
+            save current location as home waypoint
+            if guided:
+                then arm
+            else:
+                set guided
+            if guided and armed:
+                set Takeoff
+        if takeoff:
+            if current_altitude < 4:
+                take off till reach altitude
+            else:
+                set transit
+        if transit:
+            if qr detected:
+                set align
+            else if waypoint not reached:
+                goto waypoint
+            else:
+                set search
+        if search:
+            if qr not detected:
+                go in circles
+            else:
+                set align
+        if align:
+            if center of qr near center of camera:
+                set land
+            else:
+                move drone to towards qr center
+        if land:
+            set mode land
+            if disarmed and drop_flag is 0:
+                drop_flag = 1
+                set drop
+            else if drop_flag = 1:
+                log mission completed succesfully
+        if drop:
+            call payload action
+            if action finished:
+                set rtl
+        if rtl:
+            set home waypoint as destination waypoint
+            set as init
 
 def main(args=None):
     rclpy.init(args=args)
