@@ -2,12 +2,15 @@
 import rclpy
 from rclpy.node import Node
 from rclpy.action import ActionClient
+from enum import Enum, auto
 from geometry_msgs.msg import PoseStamped, Twist
 from mavros_msgs.msg import State
+from mavros_msgs.srv import CommandBool, SetMode, CommandTOL
 from interfaces.msg import TargetDeviation
 from interfaces.action import DropPayload
 
-class States(Enum):
+
+class MissionState(Enum):
     INIT = auto()
     TAKEOFF = auto()
     TRANSIT = auto()
@@ -58,6 +61,10 @@ class DroneController(Node):
 
     # Main loop
     def control_loop(self):
+        pass
+
+    """
+    control_loop pseudocode:
         if init:
             save current location as home waypoint
             if guided:
@@ -102,6 +109,7 @@ class DroneController(Node):
         if rtl:
             set home waypoint as destination waypoint
             set as init
+    """
 
 def main(args=None):
     rclpy.init(args=args)
