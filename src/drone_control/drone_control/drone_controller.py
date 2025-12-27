@@ -11,6 +11,11 @@ class DroneController(Node):
     def __init__(self):
         super().__init__('drone_controller')
 
+        # Variables
+        self.current_state = State()
+        self.current_pose = PoseStamped()
+        self.vision_data = TargetDeviation()
+
         # Subscribers
         self.state_sub = self.create_subscription(
             State, '/mavros/state', self.state_cb, 10)
@@ -30,9 +35,15 @@ class DroneController(Node):
 
         self.get_logger().info('Drone Controller Node Started')
 
-    def state_cb(self, msg): pass
-    def pos_cb(self, msg): pass
-    def vision_cb(self, msg): pass
+    def state_cb(self, msg): 
+        self.current_state = msg
+
+    def pos_cb(self, msg): 
+        self.current_pose = msg
+
+    def vision_cb(self, msg): 
+        self.vision_data = msg
+
 
 def main(args=None):
     rclpy.init(args=args)
