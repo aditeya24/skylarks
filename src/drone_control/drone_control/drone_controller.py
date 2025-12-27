@@ -25,6 +25,21 @@ class DroneController(Node):
         super().__init__('drone_controller')
 
         # Variables
+
+        # state variables
+        self.mission_state = MissionState.INIT
+        self.drop_flag = False
+
+        # navigation variables
+        self.home_location = None
+        self.target_location = [0.0, 0.0] # need to obtain this from config/cmd line
+        
+        # timing/counter variables
+        self.state_start_time = 0.0
+        self.search_last_update = 0.0
+        self.search_index = 0
+
+        # subcriber variables
         self.current_state = State()
         self.current_pose = PoseStamped()
         self.vision_data = TargetDeviation()
