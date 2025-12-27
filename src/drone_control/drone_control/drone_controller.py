@@ -76,7 +76,29 @@ class DroneController(Node):
 
     # Main loop
     def control_loop(self):
-        pass
+        if self.mission_state == MissionState.INIT:
+            pass
+
+        elif self.mission_state == MissionState.TAKEOFF:
+            pass
+
+        elif self.mission_state == MissionState.TRANSIT:
+            pass
+
+        elif self.mission_state == MissionState.SEARCH:
+            pass
+
+        elif self.mission_state == MissionState.ALIGN:
+            pass
+
+        elif self.mission_state == MissionState.LAND:
+            pass
+
+        elif self.mission_state == MissionState.DROP:
+            pass
+
+        elif self.mission_state == MissionState.RTL:
+            pass
 
     """
     control_loop pseudocode:
