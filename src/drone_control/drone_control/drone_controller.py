@@ -61,7 +61,7 @@ class DroneController(Node):
         # Action Client
         self._payload_client = ActionClient(self, DropPayload, '/payload/drop')
 
-        self.timer = create_timer(0.05, self.control_loop)
+        self.timer = self.create_timer(0.05, self.control_loop)
         self.get_logger().info('Drone Controller Node Started')
 
     # Callbacks
