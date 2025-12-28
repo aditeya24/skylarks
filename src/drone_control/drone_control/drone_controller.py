@@ -65,8 +65,8 @@ class DroneController(Node):
         self.takeoff_client = self.create_client(CommandTOL, '/mavros/cmd/takeoff')
 
         # ROS Parameters
-        self.declare_parameter('target_lat', 0.0)
-        self.declare_parameter('target_lon', 0.0)
+        self.declare_parameter('target_lat', 360.0)
+        self.declare_parameter('target_lon', 360.0)
 
         self.timer = self.create_timer(0.05, self.control_loop)
         self.get_logger().info('Drone Controller Node Started')
@@ -88,9 +88,23 @@ class DroneController(Node):
             self.get_logger().info('Waiting for FCU Connection...', throttle_duration_sec=2.0)
             return
 
-        
+
         if self.mission_state == MissionState.INIT:
-            pass
+            if self.target_location == [0.0, 0.0]:
+                lat = self.get_parameter('target_lat').value
+                lon = self.get_parameter('target_lon').value
+
+                if lat == 360.0 or lon == 360.0:
+                    self.get_logger().error('NO TARGET COORDINATES PROVIDED. Waiting for parameters...', throttle_duration_sec=2.0)
+                    return
+
+                self.target_location = [lat, lon]
+                self.get_logger().info(f"Target Location Obtained: {self.target_location}")
+
+            if self.home_location is None:
+                if self.current_pose.pose.position.x != 0.0:
+                    self.home_location = self.current_pose.pose.position
+                    self.get_logger().info(f"Home Location Saved: {self.home_location}")
 
         elif self.mission_state == MissionState.TAKEOFF:
             pass
