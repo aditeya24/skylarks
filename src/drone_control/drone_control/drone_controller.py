@@ -29,6 +29,7 @@ class DroneController(Node):
         # state variables
         self.mission_state = MissionState.INIT
         self.drop_flag = False
+        self.command_sent = False
 
         # navigation variables
         self.home_location = None
@@ -45,12 +46,9 @@ class DroneController(Node):
         self.vision_data = TargetDeviation()
 
         # Subscribers
-        self.state_sub = self.create_subscription(
-            State, '/mavros/state', self.state_cb, 10)
-        self.local_pos_sub = self.create_subscription(
-            PoseStamped, '/mavros/local_position/pose', self.pos_cb, 10)
-        self.vision_sub = self.create_subscription(
-            TargetDeviation, '/vision/target_deviation', self.vision_cb, 1)
+        self.state_sub = self.create_subscription(State, '/mavros/state', self.state_cb, 10)
+        self.local_pos_sub = self.create_subscription(PoseStamped, '/mavros/local_position/pose', self.pos_cb, 10)
+        self.vision_sub = self.create_subscription(TargetDeviation, '/vision/target_deviation', self.vision_cb, 1)
 
         # Publishers
         self.local_pos_pub = self.create_publisher(
@@ -60,6 +58,15 @@ class DroneController(Node):
 
         # Action Client
         self._payload_client = ActionClient(self, DropPayload, '/payload/drop')
+
+        # Service Clients
+        self.arming_client = self.create_client(CommandBool, '/mavros/cmd/arming')
+        self.mode_client = self.create_client(SetMode, '/mavros/set_mode')
+        self.takeoff_client = self.create_client(CommandTOL, '/mavros/cmd/takeoff')
+
+        # ROS Parameters
+        self.declare_parameter('target_lat', 0.0)
+        self.declare_parameter('target_lon', 0.0)
 
         self.timer = self.create_timer(0.05, self.control_loop)
         self.get_logger().info('Drone Controller Node Started')
