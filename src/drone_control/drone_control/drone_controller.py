@@ -76,6 +76,12 @@ class DroneController(Node):
 
     # Main loop
     def control_loop(self):
+        # Check MAVROS connection
+        if not self.current_state.connected:
+            self.get_logger().info('Waiting for FCU Connection...', throttle_duration_sec=2.0)
+            return
+
+        
         if self.mission_state == MissionState.INIT:
             pass
 
