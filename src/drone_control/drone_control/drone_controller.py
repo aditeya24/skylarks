@@ -114,6 +114,21 @@ class DroneController(Node):
                     self.command_sent = True
                     self.get_logger().info("Requesting GUIDED mode...")
 
+            elif not self.current_state.armed:
+                if not self.command_sent:
+                    req = CommandBool.Request()
+                    req.value = True
+                    self.arming_client.call_async(req)
+                    self.command_sent = True
+                    self.get_logger().info("Requesting ARMing...")
+
+                else:
+                    self.command_sent = False
+                
+            else:
+                self.mission_state = MissionState.TAKEOFF
+                self.command_sent = False
+                self.get_logger().info('State Changed to: TAKEOFF')
 
         elif self.mission_state == MissionState.TAKEOFF:
             pass
