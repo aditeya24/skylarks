@@ -81,6 +81,13 @@ class DroneController(Node):
     def vision_cb(self, msg): 
         self.vision_data = msg
 
+    # State Change Helper
+    def change_state(self, new_state):
+        self.mission_state = new_state
+        self.state_start_time = self.get_clock().now().nanoseconds / 1e9
+        self.command_sent = False
+        self.get_logger().info(f"State Changed to: {new_state.name}")
+
     # Main loop
     def control_loop(self):
         # Check MAVROS connection
