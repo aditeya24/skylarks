@@ -133,9 +133,7 @@ class DroneController(Node):
                     self.command_sent = False
                 
             else:
-                self.mission_state = MissionState.TAKEOFF
-                self.command_sent = False
-                self.get_logger().info('State Changed to: TAKEOFF')
+                self.change_state(MissionState.TAKEOFF)
 
 
         elif self.mission_state == MissionState.TAKEOFF:
@@ -154,9 +152,7 @@ class DroneController(Node):
 
             if current_altitude >= 4.0:
                 self.get_logger().info("Target Altitude Reached")
-                self.mission_state = MissionState.TRANSIT
-                self.command_sent = False
-                self.get_logger().info("State Changed to: TRANSIT")
+                self.change_state(MissionState.TRANSIT)
 
         elif self.mission_state == MissionState.TRANSIT:
             pass
