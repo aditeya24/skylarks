@@ -3,6 +3,7 @@ import rclpy
 from rclpy.node import Node
 from rclpy.action import ActionClient
 from enum import Enum, auto
+from sensor_msgs import NavSatFix
 from geometry_msgs.msg import PoseStamped, Twist
 from mavros_msgs.msg import State
 from mavros_msgs.srv import CommandBool, SetMode, CommandTOL
@@ -32,7 +33,8 @@ class DroneController(Node):
         self.command_sent = False
 
         # navigation variables
-        self.home_location = None
+        self.current_gps = None
+        self.home_gps = None
         self.target_location = [0.0, 0.0] # need to obtain this from config/cmd line
         
         # timing/counter variables
@@ -49,6 +51,7 @@ class DroneController(Node):
         self.state_sub = self.create_subscription(State, '/mavros/state', self.state_cb, 10)
         self.local_pos_sub = self.create_subscription(PoseStamped, '/mavros/local_position/pose', self.pos_cb, 10)
         self.vision_sub = self.create_subscription(TargetDeviation, '/vision/target_deviation', self.vision_cb, 1)
+        self.global_pos_sub = self.create_subscription(NavSatFix, '/mavros/global_position/global', self.gps_cb, 10)
 
         # Publishers
         self.local_pos_pub = self.create_publisher(
@@ -81,6 +84,9 @@ class DroneController(Node):
     def vision_cb(self, msg): 
         self.vision_data = msg
 
+    def gps_cb(self, msg):
+        self.current_gps = msg
+
     # State Change Helper
     def change_state(self, new_state):
         self.mission_state = new_state
@@ -97,6 +103,10 @@ class DroneController(Node):
 
 
         if self.mission_state == MissionState.INIT:
+            if self.current_gps is None or self.current_gps.status.status < 0:
+                self.get_logger().info("Waiting for GPS Fix...", throttle_duration_sec=2.0)
+                return
+
             if self.target_location == [0.0, 0.0]:
                 lat = self.get_parameter('target_lat').value
                 lon = self.get_parameter('target_lon').value
@@ -108,10 +118,9 @@ class DroneController(Node):
                 self.target_location = [lat, lon]
                 self.get_logger().info(f"Target Location Obtained: {self.target_location}")
 
-            if self.home_location is None:
-                if self.current_pose.pose.position.x != 0.0:
-                    self.home_location = self.current_pose.pose.position
-                    self.get_logger().info(f"Home Location Saved: {self.home_location}")
+            if self.home_gps is None:
+                self.home_gps = self.current_gps
+                self.get_logger().info(f"Home Location Saved: {self.home_gps.latitude}, {self.home_gps.longitude}")
 
             if self.current_state.mode != "GUIDED":
                 if not self.command_sent:
