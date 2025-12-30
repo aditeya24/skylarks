@@ -3,7 +3,7 @@ import rclpy
 from rclpy.node import Node
 from rclpy.action import ActionClient
 from enum import Enum, auto
-from sensor_msgs import NavSatFix
+from sensor_msgs.msg import NavSatFix
 import pymap3d as pm
 from geometry_msgs.msg import PoseStamped, Twist
 from mavros_msgs.msg import State
