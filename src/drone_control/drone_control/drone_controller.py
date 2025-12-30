@@ -162,7 +162,7 @@ class DroneController(Node):
 
             if current_altitude >= 4.0:
                 self.get_logger().info("Target Altitude Reached")
-                self.change_state(MissionState.TRANSIT)
+                self.change_state(MissionState.LAND) # this should switch to TRANSIT
 
 
         elif self.mission_state == MissionState.TRANSIT:
@@ -174,8 +174,23 @@ class DroneController(Node):
         elif self.mission_state == MissionState.ALIGN:
             pass
 
+
         elif self.mission_state == MissionState.LAND:
-            pass
+            if self.current_state.mode != "LAND":
+                if not self.command_sent:
+                    req = SetMode.Request()
+                    req.custom_mode = "LAND"
+                    self.mode_client.call_async(req)
+                    self.command_sent = True
+                    self.get_logger().info("Requesting LAND Mode...")
+
+            if not self.current_state.armed:
+                self.get_logger().info("Drone Disarmed. Landing Completed Successfully.")
+                self.get_logger().info("TEST PASSED: Shutting down.")
+
+                import sys
+                sys.exit(0)
+
 
         elif self.mission_state == MissionState.DROP:
             pass
