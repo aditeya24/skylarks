@@ -4,6 +4,7 @@ from rclpy.node import Node
 from rclpy.action import ActionClient
 from enum import Enum, auto
 from sensor_msgs import NavSatFix
+import pymap3d as pm
 from geometry_msgs.msg import PoseStamped, Twist
 from mavros_msgs.msg import State
 from mavros_msgs.srv import CommandBool, SetMode, CommandTOL
@@ -162,6 +163,7 @@ class DroneController(Node):
             if current_altitude >= 4.0:
                 self.get_logger().info("Target Altitude Reached")
                 self.change_state(MissionState.TRANSIT)
+
 
         elif self.mission_state == MissionState.TRANSIT:
             pass
