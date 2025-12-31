@@ -160,14 +160,14 @@ class DroneController(Node):
                 req.yaw = 0.0
                 req.latitude = 0.0
                 req.longitude = 0.0
-                req.altitude = 4.5
+                req.altitude = 2.5 # should be 4.5
                 self.takeoff_client.call_async(req)
                 self.command_sent = True
                 self.get_logger().info("Requesting TAKEOFF...")
 
             current_altitude = self.current_pose.pose.position.z
 
-            if current_altitude >= 4.0:
+            if current_altitude >= 2.0: # should be 4.0
                 self.get_logger().info("Target Altitude Reached")
                 self.change_state(MissionState.LAND) # this should switch to TRANSIT
 
