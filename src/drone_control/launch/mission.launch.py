@@ -2,7 +2,6 @@ import os
 from ament_index_python.packages import get_package_share_directory
 from launch import LaunchDescription
 from launch.actions import DeclareLaunchArgument, IncludeLaunchDescription
-from launch.launch_description_sources import PythonLaunchDescriptionSource
 from launch_xml.launch_description_sources import XMLLaunchDescriptionSource
 from launch.substitutions import LaunchConfiguration
 from launch_ros.actions import Node
@@ -23,6 +22,11 @@ def generate_launch_description():
 
     # --- 2. MAVROS (The Bridge) ---
     mavros_share = get_package_share_directory('mavros')
+    config_file = os.path.join(
+        get_package_share_directory('drone_control'),
+        'config',
+        'mavros_config.yaml'
+    )
     
     mavros_launch = IncludeLaunchDescription(
         XMLLaunchDescriptionSource(
@@ -34,7 +38,8 @@ def generate_launch_description():
             'tgt_system': '1',
             'tgt_component': '1',
             'log_output': 'screen',
-            'respawn_mavros': 'true'
+            'respawn_mavros': 'true',
+            'config_yaml': config_file 
         }.items()
     )
 
