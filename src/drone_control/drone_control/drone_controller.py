@@ -2,7 +2,7 @@
 import rclpy
 from rclpy.node import Node
 from rclpy.action import ActionClient
-from rclpy.qos import QoSProfile, ReliabilityPolicy, HistoryPolicy
+from rclpy.qos import qos_profile_sensor_data
 from enum import Enum, auto
 from sensor_msgs.msg import NavSatFix
 import pymap3d as pm
@@ -27,12 +27,6 @@ class DroneController(Node):
     def __init__(self):
         super().__init__('drone_controller')
 
-        qos_profile = QoSProfile(
-            reliability=ReliabilityPolicy.BEST_EFFORT,
-            history=HistoryPolicy.KEEP_LAST,
-            depth=10
-        )
-
         # Variables
 
         # state variables
@@ -56,10 +50,10 @@ class DroneController(Node):
         self.vision_data = TargetDeviation()
 
         # Subscribers
-        self.state_sub = self.create_subscription(State, '/mavros/state', self.state_cb, qos_profile)
-        self.local_pos_sub = self.create_subscription(PoseStamped, '/mavros/local_position/pose', self.pos_cb, qos_profile)
+        self.state_sub = self.create_subscription(State, '/mavros/state', self.state_cb, qos_profile_sensor_data)
+        self.local_pos_sub = self.create_subscription(PoseStamped, '/mavros/local_position/pose', self.pos_cb, qos_profile_sensor_data)
         self.vision_sub = self.create_subscription(TargetDeviation, '/vision/target_deviation', self.vision_cb, 1)
-        self.global_pos_sub = self.create_subscription(NavSatFix, '/mavros/global_position/global', self.gps_cb, qos_profile)
+        self.global_pos_sub = self.create_subscription(NavSatFix, '/mavros/global_position/global', self.gps_cb, qos_profile_sensor_data)
 
         # Publishers
         self.local_pos_pub = self.create_publisher(
