@@ -38,8 +38,7 @@ def generate_launch_description():
             'tgt_system': '1',
             'tgt_component': '1',
             'log_output': 'screen',
-            'respawn_mavros': 'true',
-            'config_yaml': config_file 
+            'respawn_mavros': 'true'
         }.items()
     )
 
