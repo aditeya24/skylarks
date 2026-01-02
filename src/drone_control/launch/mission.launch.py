@@ -22,12 +22,7 @@ def generate_launch_description():
 
     # --- 2. MAVROS (The Bridge) ---
     mavros_share = get_package_share_directory('mavros')
-    config_file = os.path.join(
-        get_package_share_directory('drone_control'),
-        'config',
-        'mavros_config.yaml'
-    )
-    
+
     mavros_launch = IncludeLaunchDescription(
         XMLLaunchDescriptionSource(
             os.path.join(mavros_share, 'launch', 'apm.launch')
