@@ -8,7 +8,7 @@ from sensor_msgs.msg import NavSatFix
 import pymap3d as pm
 from geometry_msgs.msg import PoseStamped, Twist
 from mavros_msgs.msg import State
-from mavros_msgs.srv import CommandBool, SetMode, CommandTOL
+from mavros_msgs.srv import CommandBool, SetMode, CommandTOL, StreamRate
 from interfaces.msg import TargetDeviation
 from interfaces.action import DropPayload
 
@@ -43,6 +43,10 @@ class DroneController(Node):
         self.state_start_time = 0.0
         self.search_last_update = 0.0
         self.search_index = 0
+
+        # Stream Rate Client
+        self.stream_rate_set = False
+        self.stream_client = self.create_client(StreamRate, '/mavros/set_stream_rate')
 
         # subcriber variables
         self.current_state = State()
@@ -105,6 +109,17 @@ class DroneController(Node):
 
 
         if self.mission_state == MissionState.INIT:
+            if not self.stream_rate_set:
+                if self.stream_client.service_is_ready():
+                    req = StreamRate.Request()
+                    req.stream_id = 0
+                    req.message_rate = 10
+                    req.on_off = True
+
+                    self.stream_client.call_async(req)
+                    self.stream_rate_set = True
+                    self.get_logger().info("Requesting MAVROS Data Streams...")
+
             if self.current_gps is None or self.current_gps.status.status < 0:
                 self.get_logger().info("Waiting for GPS Fix...", throttle_duration_sec=2.0)
                 return
