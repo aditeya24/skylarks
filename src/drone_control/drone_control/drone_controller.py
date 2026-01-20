@@ -138,25 +138,6 @@ class DroneController(Node):
             if self.home_gps is None:
                 self.home_gps = self.current_gps
                 self.get_logger().info(f"Home Location Saved: {self.home_gps.latitude}, {self.home_gps.longitude}")
-
-            if self.current_state.mode != "GUIDED":
-                if not self.command_sent:
-                    req = SetMode.Request()
-                    req.custom_mode = "GUIDED"
-                    self.mode_client.call_async(req)
-                    self.command_sent = True
-                    self.get_logger().info("Requesting GUIDED mode...")
-
-            elif not self.current_state.armed:
-                if not self.command_sent:
-                    req = CommandBool.Request()
-                    req.value = True
-                    self.arming_client.call_async(req)
-                    self.command_sent = True
-                    self.get_logger().info("Requesting ARMing...")
-
-                else:
-                    self.command_sent = False
                 
             else:
                 self.change_state(MissionState.TAKEOFF)
