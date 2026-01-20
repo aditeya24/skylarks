@@ -43,6 +43,7 @@ class DroneController(Node):
         self.state_start_time = 0.0
         self.search_last_update = 0.0
         self.search_index = 0
+        self.last_req_time = 0.0
 
         # Stream Rate Client
         self.stream_rate_set = False
@@ -144,16 +145,34 @@ class DroneController(Node):
 
 
         elif self.mission_state == MissionState.TAKEOFF:
-            if not self.command_sent:
-                req = CommandTOL.Request()
-                req.min_pitch = 0.0
-                req.yaw = 0.0
-                req.latitude = 0.0
-                req.longitude = 0.0
-                req.altitude = 2.5 # should be 4.5
-                self.takeoff_client.call_async(req)
-                self.command_sent = True
-                self.get_logger().info("Requesting TAKEOFF...")
+            now = self.get_clock().now().nanoseconds / 1e9
+
+            if self.current_state.mode != "GUIDED":
+                if (now - self.last_req_time) > 2.0:
+                    self.get_logger().info("Requesting GUIDED mode...")
+                    self.mode_client.call_async(SetMode.Request(custom_mode="GUIDED"))
+                    self.last_req_time = now
+                return
+
+            elif not self.current_state.armed:
+                if (now - self.last_req_time) > 2.0:
+                    self.get_logger().info("Requesting ARMing...")
+                    self.arming_client.call_async(CommandBool.Request(value=True))
+                    self.last_req_time = now
+                return
+
+            elif self.current_pose.pose.position.z < 0.5:
+                if (now - self.last_req_time) > 2.0:
+                    self.get_logger().info("Requesting TAKEOFF...")
+                    req = CommandTOL.Request()
+                    req.min_pitch = 0.0
+                    req.yaw = 0.0
+                    req.latitude = 0.0
+                    req.longitude = 0.0
+                    req.altitude = 2.5 # should be 4.5
+                    self.takeoff_client.call_async(req)
+                    self.last_req_time = now
+                return
 
             current_altitude = self.current_pose.pose.position.z
 
