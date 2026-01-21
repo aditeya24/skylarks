@@ -46,6 +46,7 @@ class DroneController(Node):
         self.state_start_time = 0.0
         self.search_last_update = 0.0
         self.search_index = 0
+        self.last_qr_seen_time = 0.0
         self.last_req_time = 0.0
         self._last_distance_log = 0.0
 
@@ -225,11 +226,19 @@ class DroneController(Node):
             if (now - self._last_distance_log) > 2.0:
                 self.get_logger().info(f"Distance to target: {distance:.2f}m")
                 self._last_distance_log = now
+
+            # QR Checking near Target
+            if distance < 15.0:
+                if self.vision_data.detected:
+                    self.get_logger().info("QR Detected. Switching to ALIGN.")
+                    self.last_qr_seen_time = now
+                    self.change_state(MissionState.ALIGN)
+                    return
             
             # Should transition to SEARCH
             if distance < 1.0:
-                self.get_logger().info(f"Waypoint Reached (Dist: {distance:.2f}m). GOING DIRECTLY TO LAND FOR TESTING.")
-                self.change_state(MissionState.LAND)
+                self.get_logger().info(f"Waypoint Reached. No QR Detected. Starting Search.")
+                self.change_state(MissionState.SEARCH)
                 return
             
             # Navigate to Target waypoint
