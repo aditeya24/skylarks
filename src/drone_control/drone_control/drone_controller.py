@@ -11,6 +11,7 @@ from mavros_msgs.msg import State
 from mavros_msgs.srv import CommandBool, SetMode, CommandTOL, StreamRate
 from interfaces.msg import TargetDeviation
 from interfaces.action import DropPayload
+import math
 
 
 class MissionState(Enum):
@@ -38,12 +39,15 @@ class DroneController(Node):
         self.current_gps = None
         self.home_gps = None
         self.target_location = [0.0, 0.0] # need to obtain this from config/cmd line
+        self.target_x = 0.0
+        self.target_y = 0.0
         
         # timing/counter variables
         self.state_start_time = 0.0
         self.search_last_update = 0.0
         self.search_index = 0
         self.last_req_time = 0.0
+        self._last_distance_log = 0.0
 
         # Stream Rate Client
         self.stream_rate_set = False
@@ -169,20 +173,74 @@ class DroneController(Node):
                     req.yaw = 0.0
                     req.latitude = 0.0
                     req.longitude = 0.0
-                    req.altitude = 2.5 # should be 4.5
+                    req.altitude = 3.5 # should be 4.5
                     self.takeoff_client.call_async(req)
                     self.last_req_time = now
                 return
 
             current_altitude = self.current_pose.pose.position.z
 
-            if current_altitude >= 2.0: # should be 4.0
+            if current_altitude >= 3.0: # should be 4.0
                 self.get_logger().info("Target Altitude Reached")
-                self.change_state(MissionState.LAND) # this should switch to TRANSIT
+                self.change_state(MissionState.TRANSIT) # this should switch to TRANSIT
 
 
         elif self.mission_state == MissionState.TRANSIT:
-            pass
+            # Safety timeout
+            now = self.get_clock().now().nanoseconds / 1e9
+            time_in_state = now - self.state_start_time
+            
+            if time_in_state > 60.0:  # 60 second timeout
+                self.get_logger().error("TRANSIT timeout! Landing for safety.")
+                self.change_state(MissionState.LAND)
+                return
+            
+            if not self.command_sent:
+                t_lat = self.target_location[0]
+                t_lon = self.target_location[1]
+                h_lat = self.home_gps.latitude
+                h_lon = self.home_gps.longitude
+                h_alt = self.home_gps.altitude
+                
+                #gps to enu
+                self.target_x, self.target_y, _ = pm.geodetic2enu(
+                    t_lat, t_lon, h_alt, h_lat, h_lon, h_alt
+                )
+                self.command_sent = True
+                self.get_logger().info(f"Target in local frame: E={self.target_x:.2f}m, N={self.target_y:.2f}m")
+                
+               #actually target inu aduthott anno pokunnath enn nokkuva
+                initial_distance = math.sqrt(self.target_x**2 + self.target_y**2)
+                if initial_distance > 100.0:
+                    self.get_logger().error(f"Target too far: {initial_distance:.2f}m. Check coordinates! Landing for safety.")
+                    self.change_state(MissionState.LAND)
+                    return
+            
+            #dist to target
+            curr_x = self.current_pose.pose.position.x
+            curr_y = self.current_pose.pose.position.y
+            distance = math.sqrt((self.target_x - curr_x)**2 + (self.target_y - curr_y)**2)
+            
+            #log
+            if (now - self._last_distance_log) > 2.0:
+                self.get_logger().info(f"Distance to target: {distance:.2f}m")
+                self._last_distance_log = now
+            
+            # test cheyyan mathram anne. actual akumbo will go to align state instead
+            if distance < 1.0:
+                self.get_logger().info(f"Waypoint Reached (Dist: {distance:.2f}m). GOING DIRECTLY TO LAND FOR TESTING.")
+                self.change_state(MissionState.LAND)
+                return
+            
+            # Navigate to target waypoint
+            target_pose = PoseStamped()
+            target_pose.header.stamp = self.get_clock().now().to_msg()
+            target_pose.header.frame_id = "map"
+            target_pose.pose.position.x = self.target_x
+            target_pose.pose.position.y = self.target_y
+            target_pose.pose.position.z = 3.0
+            self.local_pos_pub.publish(target_pose)
+
 
         elif self.mission_state == MissionState.SEARCH:
             pass
