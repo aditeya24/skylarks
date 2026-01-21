@@ -252,7 +252,56 @@ class DroneController(Node):
 
 
         elif self.mission_state == MissionState.SEARCH:
-            pass
+            now = self.get_clock().now().nanoseconds / 1e9
+            time_in_state = now - self.state_start_time
+            
+            if self.vision_data.detected:
+                self.get_logger().info("QR Detected. Starting ALIGN.")
+                self.last_qr_seen_time = now
+                self.change_state(MissionState.ALIGN)
+                return
+
+            if (now - self.state_start_time) > 45.0:
+                self.get_logger().warn("Search Timeout. QR Not Detected. Landing.")
+                self.change_state(MissionState.LAND)
+                return
+
+            WAIT_TIME = 4.0
+            STEP_SIZE = 2.0
+
+            if (now - self.search_last_update) > WAIT_TIME:
+                self.search_last_update = now
+                self.search_index += 1
+                self.get_logger().info(f"Search Leg {self.search_index}")
+
+            leg_count = int(self.search_index / 2) + 1
+            distance = leg_count * STEP_SIZE
+            direction = self.search_index % 4
+
+            next_x = self.target_x
+            next_y = self.target_y
+
+            if direction == 0:
+                next_x += (distance - STEP_SIZE)
+                next_y += distance
+            elif direction == 1:
+                next_x += distance
+                next_y += distance
+            elif direction == 2:
+                next_x += distance
+                next_y -= distance
+            elif direction == 3:
+                next_x -= distance
+                next_y -= distance
+
+            # Move to each corner of Expanding Square
+            msg = PoseStamped()
+            msg.header.stamp = self.get_clock().now().to_msg()
+            msg.header.frame_id = "map"
+            msg.pose.position.x = next_x
+            msg.pose.position.y = next_y
+            msg.pose.position.z = 3.0
+            self.local_pos_pub.publish(msg)
 
         elif self.mission_state == MissionState.ALIGN:
             pass
