@@ -261,7 +261,7 @@ class DroneController(Node):
                 self.change_state(MissionState.ALIGN)
                 return
 
-            if (now - self.state_start_time) > 45.0:
+            if time_in_state > 45.0:
                 self.get_logger().warn("Search Timeout. QR Not Detected. Landing.")
                 self.change_state(MissionState.LAND)
                 return
