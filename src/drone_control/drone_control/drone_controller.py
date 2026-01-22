@@ -174,7 +174,7 @@ class DroneController(Node):
                     req.yaw = 0.0
                     req.latitude = 0.0
                     req.longitude = 0.0
-                    req.altitude = 3.5
+                    req.altitude = 4.0
                     self.takeoff_client.call_async(req)
                     self.last_req_time = now
                 return
