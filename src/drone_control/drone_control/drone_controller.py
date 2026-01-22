@@ -304,8 +304,9 @@ class DroneController(Node):
             self.local_pos_pub.publish(msg)
 
         elif self.mission_state == MissionState.ALIGN:
-            pass
-
+            self.get_logger().info("ALIGN state entered. Switching to LAND for testing purpose.")
+            self.change_state(MissionState.LAND)
+            return
 
         elif self.mission_state == MissionState.LAND:
             if self.current_state.mode != "LAND":
