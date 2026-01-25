@@ -208,7 +208,7 @@ class DroneController(Node):
                 
                # Check if Target is too far away
                 initial_distance = math.sqrt(self.target_x**2 + self.target_y**2)
-                if initial_distance > 150.0:
+                if initial_distance > 100.0:
                     self.get_logger().error(f"Target too far: {initial_distance:.2f}m. Check coordinates! Landing for safety.")
                     self.change_state(MissionState.LAND)
                     return
