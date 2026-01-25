@@ -46,6 +46,8 @@ class DroneController(Node):
         self.state_start_time = 0.0
         self.search_last_update = 0.0
         self.search_index = 0
+        self.search_x = 0.0
+        self.search_y = 0.0
         self.last_qr_seen_time = 0.0
         self.last_req_time = 0.0
         self._last_distance_log = 0.0
@@ -234,6 +236,9 @@ class DroneController(Node):
             # Should transition to SEARCH
             if distance < 1.0:
                 self.get_logger().info(f"Waypoint Reached. No QR Detected. Starting Search.")
+                self.search_x = self.target_x
+                self.search_y = self.target_y
+                self.search_index = 0
                 self.change_state(MissionState.SEARCH)
                 return
             
@@ -249,53 +254,55 @@ class DroneController(Node):
 
         elif self.mission_state == MissionState.SEARCH:
             now = self.get_clock().now().nanoseconds / 1e9
-            time_in_state = now - self.state_start_time
-            
+
+            # Check for QR
             if self.vision_data.detected:
                 self.get_logger().info("QR Detected. Starting ALIGN.")
                 self.last_qr_seen_time = now
                 self.change_state(MissionState.ALIGN)
                 return
 
-            if time_in_state > 45.0:
+            # Search Timeout
+            if (now - self.state_start_time) > 45.0:
                 self.get_logger().warn("Search Timeout. QR Not Detected. Landing.")
                 self.change_state(MissionState.LAND)
                 return
 
-            WAIT_TIME = 4.0
-            STEP_SIZE = 2.0
+            # Calculate distance to current SEARCH corner
+            dx = self.search_x - self.current_pose.pose.position.x
+            dy = self.search_y - self.current_pose.pose.position.y
+            dist_to_corner = math.sqrt(dx**2 + dy**2)
 
-            if (now - self.search_last_update) > WAIT_TIME:
+            # Trigger condition for next leg
+            leg_timeout = (now - self.search_last_update) > 10.0
+            
+            if dist_to_corner < 0.5 or leg_timeout:
                 self.search_last_update = now
+                
+                STEP_SIZE = 2.0
+                
+                leg_count = int(self.search_index / 2) + 1
+                move_dist = leg_count * STEP_SIZE
+                direction = self.search_index % 4
+                
+                if direction == 0:   # North
+                    self.search_y += move_dist
+                elif direction == 1: # East
+                    self.search_x += move_dist
+                elif direction == 2: # South
+                    self.search_y -= move_dist
+                elif direction == 3: # West
+                    self.search_x -= move_dist
+
+                self.get_logger().info(f"Search Leg {self.search_index}: Moving {move_dist}m to ({self.search_x:.1f}, {self.search_y:.1f})")
                 self.search_index += 1
-                self.get_logger().info(f"Search Leg {self.search_index}")
 
-            leg_count = int(self.search_index / 2) + 1
-            distance = leg_count * STEP_SIZE
-            direction = self.search_index % 4
-
-            next_x = self.target_x
-            next_y = self.target_y
-
-            if direction == 0:
-                next_x += (distance - STEP_SIZE)
-                next_y += distance
-            elif direction == 1:
-                next_x += distance
-                next_y += distance
-            elif direction == 2:
-                next_x += distance
-                next_y -= distance
-            elif direction == 3:
-                next_x -= distance
-                next_y -= distance
-
-            # Move to each corner of Expanding Square
+            # Publish Setpoint to corner
             msg = PoseStamped()
             msg.header.stamp = self.get_clock().now().to_msg()
             msg.header.frame_id = "map"
-            msg.pose.position.x = next_x
-            msg.pose.position.y = next_y
+            msg.pose.position.x = self.search_x
+            msg.pose.position.y = self.search_y
             msg.pose.position.z = 3.0
             self.local_pos_pub.publish(msg)
 
