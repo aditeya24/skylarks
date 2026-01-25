@@ -31,7 +31,7 @@ tmux send-keys -t $SESSION:0.1 "clear" C-m
 
 # Pane 3 - System Monitoring
 tmux split-window -v -t $SESSION:0.1
-tmux send-keys -t $SESSION:0.2 "htop" C-m
+tmux send-keys -t $SESSION:0.2 "btop" C-m
 
 tmux resize-pane -t $SESSION:0.0 -x 60%
 
