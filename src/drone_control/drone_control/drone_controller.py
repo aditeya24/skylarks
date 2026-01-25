@@ -41,6 +41,7 @@ class DroneController(Node):
         self.target_location = [0.0, 0.0] # need to obtain this from config/cmd line
         self.target_x = 0.0
         self.target_y = 0.0
+        self.rtl = False
         
         # timing/counter variables
         self.state_start_time = 0.0
@@ -235,6 +236,10 @@ class DroneController(Node):
             
             # Should transition to SEARCH
             if distance < 1.0:
+                if self.rtl:
+                    self.get_logger().info("Arrived at Home. Landing.")
+                    self.change_state(MissionState.LAND)
+                    return
                 self.get_logger().info(f"Waypoint Reached. No QR Detected. Starting Search.")
                 self.search_x = self.target_x
                 self.search_y = self.target_y
@@ -324,18 +329,35 @@ class DroneController(Node):
 
 
             if not self.current_state.armed:
-                self.get_logger().info("Drone Disarmed. Landing Completed Successfully.")
-                self.get_logger().info("TEST PASSED: Shutting down.")
+                if self.rtl:
+                    self.get_logger().info("Mission Complete. Shutting Down.")
+                    import sys
+                    sys.exit(0)
 
-                import sys
-                sys.exit(0)
-
+                else:
+                    self.get_logger().info("Landed at Target. Returning.")
+                    self.change_state(MissionState.RTL)
 
         elif self.mission_state == MissionState.DROP:
             pass
 
         elif self.mission_state == MissionState.RTL:
-            pass
+            if self.home_gps is None:
+                self.get_logger().error("CRITICAL: Home GPS not saved! Cannot return.")
+                return 
+
+            now = self.get_clock().now().nanoseconds / 1e9
+
+            if (now - self.state_start_time) < 5.0:
+                self.get_logger().info(f"Waiting {now - self.state_start_time:.1f}s", throttle_duration_sec=1.0)
+                return
+
+            self.target_location = [self.home_gps.latitude, self.home_gps.longitude]
+
+            self.rtl = True
+            self.get_logger().info(f"Return Sequence Initiated. Flying to: {self.target_location}")
+
+            self.change_state(MissionState.TAKEOFF)
 
     """
     control_loop pseudocode:
