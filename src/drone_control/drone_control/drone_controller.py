@@ -170,10 +170,6 @@ class DroneController(Node):
                 if (now - self.last_req_time) > 2.0:
                     self.get_logger().info("Requesting TAKEOFF...")
                     req = CommandTOL.Request()
-                    req.min_pitch = 0.0
-                    req.yaw = 0.0
-                    req.latitude = 0.0
-                    req.longitude = 0.0
                     req.altitude = 4.0
                     self.takeoff_client.call_async(req)
                     self.last_req_time = now
@@ -303,10 +299,12 @@ class DroneController(Node):
             msg.pose.position.z = 3.0
             self.local_pos_pub.publish(msg)
 
+
         elif self.mission_state == MissionState.ALIGN:
             self.get_logger().info("ALIGN state entered. Switching to LAND for testing purpose.")
             self.change_state(MissionState.LAND)
             return
+
 
         elif self.mission_state == MissionState.LAND:
             if self.current_state.mode != "LAND":
@@ -316,6 +314,7 @@ class DroneController(Node):
                     self.mode_client.call_async(req)
                     self.command_sent = True
                     self.get_logger().info("Requesting LAND Mode...")
+
 
             if not self.current_state.armed:
                 self.get_logger().info("Drone Disarmed. Landing Completed Successfully.")
