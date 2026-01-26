@@ -268,7 +268,7 @@ class DroneController(Node):
                 return
 
             # Search Timeout
-            if (now - self.state_start_time) > 45.0:
+            if (now - self.state_start_time) > 60.0:
                 self.get_logger().warn("Search Timeout. QR Not Detected. Landing.")
                 self.change_state(MissionState.LAND)
                 return
@@ -284,7 +284,7 @@ class DroneController(Node):
             if dist_to_corner < 0.5 or leg_timeout:
                 self.search_last_update = now
                 
-                STEP_SIZE = 2.0
+                STEP_SIZE = 1.5
                 
                 leg_count = int(self.search_index / 2) + 1
                 move_dist = leg_count * STEP_SIZE
