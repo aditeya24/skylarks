@@ -10,7 +10,10 @@ from interfaces.action import DropPayload
 SERVO_PIN = 18
 PWM_FREQ = 50   
 
-
+# Duty Cycles for SG90/MG90S Servos:
+# 2.5  = ~0 Degrees
+# 7.5  = ~90 Degrees
+# 12.5 = ~180 Degrees
 CLOSED_DUTY = 2.5  # Adjust this if it doesn't close fully
 OPEN_DUTY = 7.5    # Adjust this if it doesn't open enough
 
