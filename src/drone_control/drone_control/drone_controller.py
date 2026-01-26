@@ -41,6 +41,7 @@ class DroneController(Node):
         self.target_location = [0.0, 0.0] # need to obtain this from config/cmd line
         self.target_x = 0.0
         self.target_y = 0.0
+        self.search_attempted = False
         self.rtl = False
         
         # timing/counter variables
@@ -240,6 +241,10 @@ class DroneController(Node):
                     self.get_logger().info("Arrived at Home. Landing.")
                     self.change_state(MissionState.LAND)
                     return
+                if self.search_attempted:
+                    self.get_logger().warn("Returned to Target after Search. Landing Blindly.")
+                    self.change_state(MissionState.LAND)
+                    return
                 self.get_logger().info(f"Waypoint Reached. No QR Detected. Starting Search.")
                 self.search_x = self.target_x
                 self.search_y = self.target_y
@@ -269,8 +274,9 @@ class DroneController(Node):
 
             # Search Timeout
             if (now - self.state_start_time) > 60.0:
-                self.get_logger().warn("Search Timeout. QR Not Detected. Landing.")
-                self.change_state(MissionState.LAND)
+                self.get_logger().warn("Search Timeout. QR Not Detected. Returning to Center.")
+                self.search_attempted = True
+                self.change_state(MissionState.TRANSIT)
                 return
 
             # Calculate distance to current SEARCH corner
@@ -354,6 +360,8 @@ class DroneController(Node):
 
             self.target_location = [self.home_gps.latitude, self.home_gps.longitude]
 
+            self.search_attempted = False
+            self.search_index = 0
             self.rtl = True
             self.get_logger().info(f"Return Sequence Initiated. Flying to: {self.target_location}")
 
