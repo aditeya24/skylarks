@@ -7,7 +7,7 @@ from launch.substitutions import LaunchConfiguration
 from launch_ros.actions import Node
 
 def generate_launch_description():
-    # --- 1. ARGUMENTS (Command Line Inputs) ---\
+    # --- ARGUMENTS (Command Line Inputs) ---\
     target_lat_arg = DeclareLaunchArgument(
         'target_lat', 
         default_value='360.0',
@@ -20,7 +20,7 @@ def generate_launch_description():
         description='Target Longitude for the Drop Zone'
     )
 
-    # --- 2. MAVROS (The Bridge) ---
+    # --- MAVROS (The Bridge) ---
     mavros_share = get_package_share_directory('mavros')
 
     mavros_launch = IncludeLaunchDescription(
@@ -37,13 +37,31 @@ def generate_launch_description():
         }.items()
     )
 
-    # --- 3. DRONE CONTROLLER (The Brain) ---
+    # --- VISION NODE (QR Detector) ---
+    qr_detector_node = Node(
+        package='vision',
+        executable='qr_detector',
+        name='qr_detector',
+        output='log',
+        emulate_tty=True
+    )
+
+    # --- PAYLOAD NODE (Servo Driver) ---
+    payload_node = Node(
+        package='payload',
+        executable='payload_driver',
+        name='payload_driver',
+        output='screen',
+        emulate_tty=True
+    )
+
+    # --- DRONE CONTROLLER  ---
     drone_controller_node = Node(
         package='drone_control',
         executable='drone_controller',
         name='drone_controller',
         output='screen',
-        emulate_tty=True, # Improved console logging formatting
+        emulate_tty=True, 
         parameters=[{
             'target_lat': LaunchConfiguration('target_lat'),
             'target_lon': LaunchConfiguration('target_lon')
@@ -54,5 +72,7 @@ def generate_launch_description():
         target_lat_arg,
         target_lon_arg,
         mavros_launch,
+        qr_detector_node,
+        payload_node,
         drone_controller_node
     ])
