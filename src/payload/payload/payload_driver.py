@@ -14,8 +14,11 @@ PWM_FREQ = 50
 # 2.5  = ~0 Degrees
 # 7.5  = ~90 Degrees
 # 12.5 = ~180 Degrees
-CLOSED_DUTY = 2.5  # Adjust this if it doesn't close fully
-OPEN_DUTY = 7.5    # Adjust this if it doesn't open enough
+CLOSED_DUTY = 3.6  # Adjust this if it doesn't close fully
+OPEN_DUTY = 10.6    # Adjust this if it doesn't open enough
+
+STEP_SIZE = 0.1
+STEP_DELAY = 0.02
 
 class PayloadDriver(Node):
     def __init__(self):
@@ -44,6 +47,27 @@ class PayloadDriver(Node):
             
         self.get_logger().info('Payload Driver Ready (GPIO Mode)')
 
+    def slow_move(self, start_duty, end_duty):
+        self.get_logger().info(f"Moving servo from {start_duty} to {end_duty}")
+
+        if start_duty < end_duty:
+            current = start_duty
+            while current < end_duty:
+                current += STEP_SIZE
+                if current > end_duty: current = end_duty
+                self.pwm.ChangeDutyCycle(current)
+                time.sleep(STEP_DELAY)
+        else:
+            current = start_duty
+            while current > end_duty:
+                current -= STEP_SIZE
+                if current < end_duty: current = end_duty
+                self.pwm.ChangeDutyCycle(current)
+                time.sleep(STEP_DELAY)
+
+        self.pwm.ChangeDutyCycle(end_duty)
+        time.sleep(0.2)
+
     def execute_callback(self, goal_handle):
         self.get_logger().info('Received Drop Command. Actuating Servo...')
         
@@ -52,21 +76,17 @@ class PayloadDriver(Node):
             goal_handle.abort()
             return DropPayload.Result(success=False)
 
-        
-        self.pwm.ChangeDutyCycle(OPEN_DUTY)
-        time.sleep(1.0)
+        self.slow_move(CLOSED_DUTY, OPEN_DUTY)
+
         self.pwm.ChangeDutyCycle(0)
         
         feedback_msg = DropPayload.Feedback()
         feedback_msg.status = "Dropping"
         goal_handle.publish_feedback(feedback_msg)
         
-        
         time.sleep(3.0) 
         
-        
-        self.pwm.ChangeDutyCycle(CLOSED_DUTY)
-        time.sleep(1.0)
+        self.slow_move(OPEN_DUTY, CLOSED_DUTY)
         self.pwm.ChangeDutyCycle(0)
         
         goal_handle.succeed()
