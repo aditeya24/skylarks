@@ -1,5 +1,22 @@
 #!/bin/bash
 
+echo "1) Bright Sun (Fast Shutter)"
+echo "2) Cloudy/Evening (Slow Shutter)"
+echo "Select Lighting: "
+read -p "Choice: " LIGHT
+
+CAM_DEV="/dev/real_cam"
+
+if [ "$LIGHT" == "1" ]; then
+    v4l2-ctl -d $CAM_DEV --set-ctrl=auto_exposure=1
+    v4l2-ctl -d $CAM_DEV --set-ctrl=exposure_time_absolute=20
+    echo "Exposure set to 20 (Sun)"
+else
+    v4l2-ctl -d $CAM_DEV --set-ctrl=auto_exposure=1
+    v4l2-ctl -d $CAM_DEV --set-ctrl=exposure_time_absolute=150
+    echo "Exposure set to 150 (Cloud)"
+fi
+
 echo -n "Enter Target LATITUDE: "
 read TARGET_LAT
 
@@ -28,6 +45,7 @@ tmux send-keys -t $SESSION:0.0 "$LAUNCH_CMD"
 tmux split-window -h -t $SESSION:0
 tmux send-keys -t $SESSION:0.1 "source install/setup.bash" C-m
 tmux send-keys -t $SESSION:0.1 "clear" C-m
+tmux send-keys -t $SESSION:0.1 "ros2 topic echo /vision/target_deviation --qos-reliability best_effort" C-m
 
 # Pane 3 - System Monitoring
 tmux split-window -v -t $SESSION:0.1
