@@ -341,11 +341,29 @@ class DroneController(Node):
                     sys.exit(0)
 
                 else:
-                    self.get_logger().info("Landed at Target. Returning.")
-                    self.change_state(MissionState.RTL)
+                    self.get_logger().info("Landed at Target. Dropping Payload.")
+                    self.change_state(MissionState.DROP)
 
         elif self.mission_state == MissionState.DROP:
-            pass
+            if not self.command_sent:
+                self.get_logger().info("Activating Payload Release Mechanism...")
+
+                if not self._payload_client.wait_for_server(timeout_sec=1.0):
+                    self.get_logger().error("Payload Action Server not available!", throttle_duration_sec=2.0)
+                    return
+
+                goal = DropPayload.Goal()
+                goal.command = "DROP"
+
+                self._payload_client.send_goal_async(goal)
+                self.command_sent = True
+                self.state_start_time = now
+
+            if (now - self.state_start_time) > 6.0:
+                self.get_logger().info("Drop Sequence Complete. Switching to RTL.")
+
+                self.drop_flag = True
+                self.change_state(MissionState.RTL)
 
         elif self.mission_state == MissionState.RTL:
             if self.home_gps is None:
@@ -355,7 +373,8 @@ class DroneController(Node):
             now = self.get_clock().now().nanoseconds / 1e9
 
             if (now - self.state_start_time) < 5.0:
-                self.get_logger().info(f"Waiting {now - self.state_start_time:.1f}s", throttle_duration_sec=1.0)
+                remaining = 5.0 - (now - self.state_start_time)
+                self.get_logger().info(f"Waiting {remaining:.1f}s", throttle_duration_sec=1.0)
                 return
 
             self.target_location = [self.home_gps.latitude, self.home_gps.longitude]
