@@ -21,8 +21,8 @@ if [ ! -z "$CAM_DEV" ]; then
     # We use 'try/catch' style by using || true so script doesn't crash if camera is busy
     if [ "$LIGHT" == "1" ]; then
         v4l2-ctl -d $CAM_DEV --set-ctrl=auto_exposure=1 || true
-        v4l2-ctl -d $CAM_DEV --set-ctrl=exposure_time_absolute=20 || true
-        echo "--> Exposure set to 20 (Sun)"
+        v4l2-ctl -d $CAM_DEV --set-ctrl=exposure_time_absolute=1 || true
+        echo "--> Exposure set to 1 (Sun)"
     else
         v4l2-ctl -d $CAM_DEV --set-ctrl=auto_exposure=1 || true
         v4l2-ctl -d $CAM_DEV --set-ctrl=exposure_time_absolute=150 || true
