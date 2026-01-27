@@ -1,35 +1,5 @@
 #!/bin/bash
 
-echo "1) Bright Sun (Fast Shutter)"
-echo "2) Cloudy/Evening (Slow Shutter)"
-echo -n "Select Lighting [1 or 2]: "
-read LIGHT
-
-if [ -e "/dev/real_cam" ]; then
-    CAM_DEV="/dev/real_cam"
-elif [ -e "/dev/video0" ]; then
-    CAM_DEV="/dev/video0"
-else
-    echo "ERROR: No camera device found! Skipping exposure setup."
-    CAM_DEV=""
-fi
-
-
-if [ ! -z "$CAM_DEV" ]; then
-    echo "Configuring Camera at $CAM_DEV..."
-    
-    # We use 'try/catch' style by using || true so script doesn't crash if camera is busy
-    if [ "$LIGHT" == "1" ]; then
-        v4l2-ctl -d $CAM_DEV --set-ctrl=auto_exposure=1 || true
-        v4l2-ctl -d $CAM_DEV --set-ctrl=exposure_time_absolute=1 || true
-        echo "--> Exposure set to 1 (Sun)"
-    else
-        v4l2-ctl -d $CAM_DEV --set-ctrl=auto_exposure=1 || true
-        v4l2-ctl -d $CAM_DEV --set-ctrl=exposure_time_absolute=150 || true
-        echo "--> Exposure set to 150 (Cloud)"
-    fi
-fi
-echo ""
 
 echo -n "Enter Target LATITUDE: "
 read TARGET_LAT
