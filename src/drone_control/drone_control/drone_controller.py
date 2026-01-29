@@ -230,9 +230,8 @@ class DroneController(Node):
             # QR Checking near Target
             if distance < 15.0:
                 if self.vision_data.detected:
-                    self.get_logger().info("QR Detected. Switching to ALIGN.")
-                    self.last_qr_seen_time = now
-                    self.change_state(MissionState.ALIGN)
+                    self.get_logger().info("QR Detected. Landing.")
+                    self.change_state(MissionState.LAND)
                     return
             
             # Should transition to SEARCH
@@ -267,9 +266,8 @@ class DroneController(Node):
 
             # Check for QR
             if self.vision_data.detected:
-                self.get_logger().info("QR Detected. Starting ALIGN.")
-                self.last_qr_seen_time = now
-                self.change_state(MissionState.ALIGN)
+                self.get_logger().info("QR Detected. Landing.")
+                self.change_state(MissionState.LAND)
                 return
 
             # Search Timeout
@@ -290,7 +288,7 @@ class DroneController(Node):
             if dist_to_corner < 0.5 or leg_timeout:
                 self.search_last_update = now
                 
-                STEP_SIZE = 1.5
+                STEP_SIZE = 1.0
                 
                 leg_count = int(self.search_index / 2) + 1
                 move_dist = leg_count * STEP_SIZE
