@@ -14,8 +14,7 @@ tmux kill-session -t $SESSION 2>/dev/null
 tmux new-session -d -s $SESSION
 
 # Pane 1 - Drone Control
-tmux send-keys -t $SESSION:0.0 "source /opt/ros/humble/setup.bash" C-m
-tmux send-keys -t $SESSION:0.0 "source install/setup.bash" C-m
+tmux send-keys -t $SESSION:0.0 "source /opt/ros/humble/setup.bash && source install/setup.bash" C-m
 tmux send-keys -t $SESSION:0.0 "clear" C-m
 
 if [ -z "$TARGET_LAT" ]; then TARGET_LAT="360.0"; fi
@@ -27,9 +26,9 @@ tmux send-keys -t $SESSION:0.0 "$LAUNCH_CMD"
 
 # Pane 2 - Vision
 tmux split-window -h -t $SESSION:0
-tmux send-keys -t $SESSION:0.1 "source install/setup.bash" C-m
+tmux send-keys -t $SESSION:0.1 "source /opt/ros/humble/setup.bash && source install/setup.bash" C-m
 tmux send-keys -t $SESSION:0.1 "clear" C-m
-tmux send-keys -t $SESSION:0.1 "ros2 topic echo /vision/target_deviation --qos-reliability best_effort" C-m
+tmux send-keys -t $SESSION:0.1 "ros2 run vision qr_detector" C-m
 
 # Pane 3 - System Monitoring
 tmux split-window -v -t $SESSION:0.1

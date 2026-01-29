@@ -7,7 +7,7 @@ from launch.substitutions import LaunchConfiguration
 from launch_ros.actions import Node
 
 def generate_launch_description():
-    # --- ARGUMENTS (Command Line Inputs) ---\
+    # --- ARGUMENTS (Command Line Inputs) ---
     target_lat_arg = DeclareLaunchArgument(
         'target_lat', 
         default_value='360.0',
@@ -38,13 +38,13 @@ def generate_launch_description():
     )
 
     # --- VISION NODE (QR Detector) ---
-    qr_detector_node = Node(
-        package='vision',
-        executable='qr_detector',
-        name='qr_detector',
-        output='log',
-        emulate_tty=True
-    )
+    #qr_detector_node = Node(
+    #    package='vision',
+    #    executable='qr_detector',
+    #    name='qr_detector',
+    #    output='log',
+    #    emulate_tty=True
+    #)
 
     # --- PAYLOAD NODE (Servo Driver) ---
     payload_node = Node(
@@ -72,7 +72,7 @@ def generate_launch_description():
         target_lat_arg,
         target_lon_arg,
         mavros_launch,
-        qr_detector_node,
+        #qr_detector_node,
         payload_node,
         drone_controller_node
     ])
