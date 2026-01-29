@@ -182,20 +182,8 @@ class DroneController(Node):
             current_altitude = self.current_pose.pose.position.z
 
             if current_altitude >= 3.0:
-                self.get_logger().info("TEST MODE: Skipping TRANSIT. Starting Local Search.")
-
-                # 1. Set "Target" to current location (so we search here)
-                self.target_x = self.current_pose.pose.position.x
-                self.target_y = self.current_pose.pose.position.y
-
-                # 2. Initialize Search Variables (Critical!)
-                self.search_x = self.target_x
-                self.search_y = self.target_y
-                self.search_index = 0
-                self.search_last_update = now
-                
-                # 3. Go straight to SEARCH
-                self.change_state(MissionState.SEARCH)
+                self.get_logger().info("Target Altitude Reached")
+                self.change_state(MissionState.TRANSIT)
 
 
         elif self.mission_state == MissionState.TRANSIT:
