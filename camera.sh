@@ -1,5 +1,4 @@
 #!/bin/bash
-set -e
 
 DEFAULT_IP="100.71.135.108"
 echo -n "Enter Target IP (Default: $DEFAULT_IP): "
