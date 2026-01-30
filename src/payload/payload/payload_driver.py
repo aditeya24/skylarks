@@ -6,19 +6,15 @@ import time
 import RPi.GPIO as GPIO
 from interfaces.action import DropPayload
 
-
 SERVO_PIN = 18
 PWM_FREQ = 50   
 
-# Duty Cycles for SG90/MG90S Servos:
+# Duty Cycles
 # 2.5  = ~0 Degrees
 # 7.5  = ~90 Degrees
 # 12.5 = ~180 Degrees
-CLOSED_DUTY = 6  # Adjust this if it doesn't close fully
-OPEN_DUTY = 11    # Adjust this if it doesn't open enough
-
-STEP_SIZE = 0.1
-STEP_DELAY = 0.03
+CLOSED_DUTY = 6
+OPEN_DUTY = 11   
 
 class PayloadDriver(Node):
     def __init__(self):
@@ -45,50 +41,36 @@ class PayloadDriver(Node):
             '/payload/drop',
             self.execute_callback)
             
-        self.get_logger().info('Payload Driver Ready (GPIO Mode)')
-
-    def slow_move(self, start_duty, end_duty):
-        self.get_logger().info(f"Moving servo from {start_duty} to {end_duty}")
-
-        if start_duty < end_duty:
-            current = start_duty
-            while current < end_duty:
-                current += STEP_SIZE
-                if current > end_duty: current = end_duty
-                self.pwm.ChangeDutyCycle(current)
-                time.sleep(STEP_DELAY)
-        else:
-            current = start_duty
-            while current > end_duty:
-                current -= STEP_SIZE
-                if current < end_duty: current = end_duty
-                self.pwm.ChangeDutyCycle(current)
-                time.sleep(STEP_DELAY)
-
-        self.pwm.ChangeDutyCycle(end_duty)
-        time.sleep(0.2)
+        self.get_logger().info('Payload Driver Ready (Snap Mode)')
 
     def execute_callback(self, goal_handle):
-        self.get_logger().info('Received Drop Command. Actuating Servo...')
+        self.get_logger().info('Received Drop Command.')
         
         if not self.hardware_ready:
-            self.get_logger().error("Hardware not ready, aborting action.")
             goal_handle.abort()
             return DropPayload.Result(success=False)
 
-        self.slow_move(CLOSED_DUTY, OPEN_DUTY)
-
-        self.pwm.ChangeDutyCycle(0)
+        # 1. SNAP OPEN
+        self.get_logger().info('Opening Mechanism...')
+        self.pwm.ChangeDutyCycle(OPEN_DUTY)
+        time.sleep(0.5) # Wait for servo to travel
+        self.pwm.ChangeDutyCycle(0) # Cut signal to stop jitter
         
+        # 2. WAIT (Drop Time)
+        # Increased to 5 seconds to ensure payload falls clear
         feedback_msg = DropPayload.Feedback()
-        feedback_msg.status = "Dropping"
+        feedback_msg.status = "Mechanism Open - Dropping"
         goal_handle.publish_feedback(feedback_msg)
         
-        time.sleep(3.0) 
+        time.sleep(5.0) 
         
-        self.slow_move(OPEN_DUTY, CLOSED_DUTY)
-        self.pwm.ChangeDutyCycle(0)
+        # 3. SNAP CLOSE
+        self.get_logger().info('Closing Mechanism...')
+        self.pwm.ChangeDutyCycle(CLOSED_DUTY)
+        time.sleep(0.5) # Wait for travel
+        self.pwm.ChangeDutyCycle(0) # Cut signal
         
+        # 4. FINISH
         goal_handle.succeed()
         result = DropPayload.Result()
         result.success = True
