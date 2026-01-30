@@ -14,11 +14,11 @@ PWM_FREQ = 50
 # 2.5  = ~0 Degrees
 # 7.5  = ~90 Degrees
 # 12.5 = ~180 Degrees
-CLOSED_DUTY = 3.6  # Adjust this if it doesn't close fully
-OPEN_DUTY = 10.6    # Adjust this if it doesn't open enough
+CLOSED_DUTY = 6  # Adjust this if it doesn't close fully
+OPEN_DUTY = 11    # Adjust this if it doesn't open enough
 
 STEP_SIZE = 0.1
-STEP_DELAY = 0.02
+STEP_DELAY = 0.03
 
 class PayloadDriver(Node):
     def __init__(self):
