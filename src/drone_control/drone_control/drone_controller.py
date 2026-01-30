@@ -174,14 +174,14 @@ class DroneController(Node):
                 if (now - self.last_req_time) > 2.0:
                     self.get_logger().info("Requesting TAKEOFF...")
                     req = CommandTOL.Request()
-                    req.altitude = 4.0
+                    req.altitude = 3.0
                     self.takeoff_client.call_async(req)
                     self.last_req_time = now
                 return
 
             current_altitude = self.current_pose.pose.position.z
 
-            if current_altitude >= 3.0:
+            if current_altitude >= 2.3:
                 self.get_logger().info("Target Altitude Reached")
                 self.change_state(MissionState.TRANSIT)
 
