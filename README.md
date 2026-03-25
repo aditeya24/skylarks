@@ -8,14 +8,13 @@
   <img src="https://img.shields.io/badge/Interface-MAVROS-6C2DC7?style=for-the-badge" />
 </p>
 
-Autonomous drone software stack built using ROS 2 for GPS navigation, QR-based landing, payload delivery, and return-to-launch.  
-Designed for deployment on a Raspberry Pi companion computer communicating with a Pixhawk flight controller.
+ROS 2–based autonomous drone software stack for GPS navigation, QR-based landing, payload delivery, and return-to-launch.  
+Designed for deployment on a Raspberry Pi companion computer interfacing with a Pixhawk flight controller via MAVROS.
 
 ## Architecture
 <p align="center">
   <img src="docs/images/architecture.svg" width="900"/>
 </p>
-
 
 High-level ROS2 autonomy architecture showing perception, control, payload actuation, and MAVROS bridge.
 
@@ -145,7 +144,7 @@ t. ! queue ! v4l2sink device=/dev/video41
 
 ## Mission Workflow
 
-Before running a mission, three scripts are used.
+Before running a mission, the following scripts are executed.
 
 ### 1. Configure Camera Exposure
 
