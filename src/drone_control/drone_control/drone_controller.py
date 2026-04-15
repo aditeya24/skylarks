@@ -1,4 +1,22 @@
 #!/usr/bin/env python3
+"""
+Skylarks Main Drone Control Node
+
+This node implements the central autonomy State Machine for the companion computer.
+It manages MAVROS subscriptions for pose/state, issues Setpoint commands (Position & Velocity),
+and interfaces with the Vision Node (`qr_detector`) and Payload Node (`payload_driver`).
+
+Key Autonomy States:
+- INIT: Wait for GPS and connections.
+- TAKEOFF: Guides drone to 3 meters altitude.
+- TRANSIT: Navigates to a target GPS waypoint via local ENU conversion.
+- SEARCH: Executable square spiral pattern if target isn't found immediately.
+- ALIGN: PID control using vision offsets to perfectly hover over the target.
+- LAND: Autonomous descent.
+- DROP: Triggers the payload server mechanism.
+- RTL: Custom return-to-launch sequence to bypass ArduPilot's native home-reset on landing.
+"""
+
 import rclpy
 from rclpy.node import Node
 from rclpy.action import ActionClient
@@ -25,6 +43,10 @@ class MissionState(Enum):
     RTL = auto()
 
 class DroneController(Node):
+    """
+    Core Mission Control ROS 2 Node.
+    Orchestrates the entire flight lifecycle utilizing MAVROS.
+    """
     def __init__(self):
         super().__init__('drone_controller')
 
@@ -53,6 +75,10 @@ class DroneController(Node):
         self.last_qr_seen_time = 0.0
         self.last_req_time = 0.0
         self._last_distance_log = 0.0
+        
+        # watchdog/safety flags
+        self.last_vision_msg_time = 0.0
+        self.takeoff_commanded = False
 
         # Stream Rate Client
         self.stream_rate_set = False
@@ -98,24 +124,46 @@ class DroneController(Node):
         self.current_pose = msg
 
     def vision_cb(self, msg): 
+        """
+        Receives visual offset data from `qr_detector`. Updates local timestamp cache.
+        """
         self.vision_data = msg
+        self.last_vision_msg_time = self.get_clock().now().nanoseconds / 1e9
 
     def gps_cb(self, msg):
         self.current_gps = msg
 
-    # State Change Helper
     def change_state(self, new_state):
         self.mission_state = new_state
         self.state_start_time = self.get_clock().now().nanoseconds / 1e9
         self.command_sent = False
+        self.takeoff_commanded = False # Ensure commands refresh per state loop
         self.get_logger().info(f"State Changed to: {new_state.name}")
 
-    # Main loop
+    # Main loop (State Machine)
     def control_loop(self):
-        # Check MAVROS connection
+        """
+        Executed every 50ms (20 Hz) to process the current state logic and govern transitions.
+        Ensures constant MAVROS stream polling and state verification.
+        """
+        # Check MAVROS connection status before processing any autonomy logic
         if not self.current_state.connected:
             self.get_logger().info('Waiting for FCU Connection...', throttle_duration_sec=2.0)
             return
+
+        now = self.get_clock().now().nanoseconds / 1e9
+
+        # -------------------------------------------------------------
+        # CAMERA/VISION WATCHDOG (Stale Message Prevention)
+        # Prevents ghost locks if `qr_detector` crashes or framerate freezes.
+        # `qos_profile_sensor_data` caches the last received message indefinitely. 
+        # If no fresh telemetry arrives within 1.5s, we explicitly kill the target lock.
+        # -------------------------------------------------------------
+        if self.vision_data.detected and (now - self.last_vision_msg_time) > 1.5:
+            self.get_logger().warn("Vision stream frozen or disconnected! Breaking QR lock.", throttle_duration_sec=2.0)
+            self.vision_data.detected = False
+            self.vision_data.x_error = 0.0
+            self.vision_data.y_error = 0.0
 
 
         if self.mission_state == MissionState.INIT:
@@ -170,12 +218,15 @@ class DroneController(Node):
                     self.last_req_time = now
                 return
 
-            elif self.current_pose.pose.position.z < 0.5:
-                if (now - self.last_req_time) > 2.0:
+            # Barometric Drift Protection:
+            # Replaced < 0.5m with < 1.0m because local origins routinely drift 0.6m on the ground.
+            elif self.current_pose.pose.position.z < 1.0:
+                if not self.takeoff_commanded or (now - self.last_req_time) > 2.0:
                     self.get_logger().info("Requesting TAKEOFF...")
                     req = CommandTOL.Request()
                     req.altitude = 3.0
                     self.takeoff_client.call_async(req)
+                    self.takeoff_commanded = True
                     self.last_req_time = now
                 return
 
@@ -191,7 +242,7 @@ class DroneController(Node):
             now = self.get_clock().now().nanoseconds / 1e9
             time_in_state = now - self.state_start_time
             
-            if time_in_state > 75.0:  # 75 second timeout
+            if time_in_state > getattr(self, 'transit_timeout', 150.0):
                 self.get_logger().error("TRANSIT timeout! Landing for safety.")
                 self.change_state(MissionState.LAND)
                 return
@@ -203,10 +254,17 @@ class DroneController(Node):
                 h_lon = self.home_gps.longitude
                 h_alt = self.home_gps.altitude
                 
-                # GPS to ENU
+                # GPS to ENU (Local Frame Conversion)
+                # Converts standard Lat/Lon/Alt into flat X/Y/Z meters relative to our takeoff Home point
                 self.target_x, self.target_y, _ = pm.geodetic2enu(
                     t_lat, t_lon, h_alt, h_lat, h_lon, h_alt
                 )
+                
+                # Dynamic Timeout Calculation: 
+                # Instead of a hard 75s constraint, calculate expected flight time at 0.5 m/s + 30s buffer. 
+                # This prevents unexpected aborts on distant targets holding strong headwinds.
+                initial_distance = math.sqrt(self.target_x**2 + self.target_y**2)
+                self.transit_timeout = max(90.0, initial_distance / 0.5 + 30.0)
                 self.command_sent = True
                 self.get_logger().info(f"Target in local frame: E={self.target_x:.2f}m, N={self.target_y:.2f}m")
                 
@@ -228,10 +286,13 @@ class DroneController(Node):
                 self._last_distance_log = now
 
             # QR Checking near Target
-            if distance < 15.0:
+            # We explicitly ignore QR codes if navigating Home (`self.rtl`), 
+            # to prevent decoy triggers breaking the return voyage.
+            if distance < 15.0 and not self.rtl:
                 if self.vision_data.detected:
-                    self.get_logger().info("QR Detected. Landing.")
-                    self.change_state(MissionState.LAND)
+                    self.get_logger().info("QR Detected. Switching to ALIGN.")
+                    self.last_qr_seen_time = now
+                    self.change_state(MissionState.ALIGN)
                     return
             
             # Should transition to SEARCH
@@ -266,8 +327,9 @@ class DroneController(Node):
 
             # Check for QR
             if self.vision_data.detected:
-                self.get_logger().info("QR Detected. Landing.")
-                self.change_state(MissionState.LAND)
+                self.get_logger().info("QR Detected. Switching to ALIGN.")
+                self.last_qr_seen_time = now
+                self.change_state(MissionState.ALIGN)
                 return
 
             # Search Timeout
@@ -317,9 +379,45 @@ class DroneController(Node):
 
 
         elif self.mission_state == MissionState.ALIGN:
-            self.get_logger().info("ALIGN state entered. Switching to LAND for testing purpose.")
-            self.change_state(MissionState.LAND)
-            return
+            now = self.get_clock().now().nanoseconds / 1e9
+            
+            if not self.vision_data.detected:
+                # If lost for more than 3 seconds, go back to SEARCH
+                if (now - self.last_qr_seen_time) > 3.0:
+                    self.get_logger().warn("QR lost during ALIGN! Reverting to SEARCH.")
+                    self.search_index = 0
+                    self.search_x = self.current_pose.pose.position.x
+                    self.search_y = self.current_pose.pose.position.y
+                    self.change_state(MissionState.SEARCH)
+                return
+            
+            self.last_qr_seen_time = now
+            
+            # -------------------------------------------------------------
+            # VISION ALIGNMENT (PID CONTROLLER)
+            # Uses standard Proportional feedback loop to command body-frame velocities.
+            # -------------------------------------------------------------
+            Kp = 0.5 # Convert normalized error (-1 to 1) to m/s 
+            
+            vel_cmd = Twist()
+            # If y_error is positive (QR at bottom of optical frame), the drone must move backward 
+            # (-X velocity in the drone's BODY frame) to center it.
+            vel_cmd.linear.x = -Kp * self.vision_data.y_error  
+            # If x_error is positive (QR at right of optical frame), the drone must move right 
+            # (-Y velocity in the drone's BODY frame) to center it.
+            vel_cmd.linear.y = -Kp * self.vision_data.x_error  
+            vel_cmd.linear.z = 0.0 # Strict altitude lock at ~3.0m while sliding horizontally
+            
+            # Threshold Check: Within 10% normalized optical center implies high precision alignment
+            if abs(self.vision_data.x_error) < 0.10 and abs(self.vision_data.y_error) < 0.10:
+                self.get_logger().info("Target Centered! Initiating LAND.")
+                vel_cmd.linear.x = 0.0
+                vel_cmd.linear.y = 0.0
+                self.vel_pub.publish(vel_cmd)
+                self.change_state(MissionState.LAND)
+                return
+            
+            self.vel_pub.publish(vel_cmd)
 
 
         elif self.mission_state == MissionState.LAND:
@@ -364,6 +462,13 @@ class DroneController(Node):
                 self.change_state(MissionState.RTL)
 
         elif self.mission_state == MissionState.RTL:
+            # Note regarding MANUAL RTL Implementation:
+            # We explicitly do NOT use the native ArduPilot "RTL" mode here. 
+            # When the drone lands to deliver the payload, Mission Planner/ArduPilot 
+            # natively resets the internal Home location to the newly landed spot.
+            # If we used native RTL, it wouldn't fly back. It would just hover at the target.
+            # Instead, we pull our cached initial `self.home_gps` safely and execute a manual transit.
+
             if self.home_gps is None:
                 self.get_logger().error("CRITICAL: Home GPS not saved! Cannot return.")
                 return 
