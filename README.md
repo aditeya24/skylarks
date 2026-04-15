@@ -20,10 +20,17 @@ High-level ROS2 autonomy architecture showing perception, control, payload actua
 
 ## Nodes
 
-- `drone_controller` — mission state machine  
-- `qr_detector` — QR detection node  
-- `payload_driver` — servo action server  
-- `mavros` — flight controller bridge  
+- `drone_controller` — Mission state machine featuring dynamic route timeouts, PID velocity alignment, and stale-message target lock watchdogs.
+- `qr_detector` — High-resolution (1280x800) QR bounding box processor utilizing OpenCV/`pyzbar` to compute -1.0 to +1.0 Cartesian error vectors.
+- `payload_driver` — Asynchronous multithreaded MG90S servo action server.
+- `mavros` — Flight controller bridge.
+
+## Resilience & Edge-Case Safety
+Several mission-critical fail-safes are hardcoded into the flight stack to ensure autonomy survival during extreme field conditions:
+1. **Manual RTL Check:** ArduPilot natively resets the Home GPS location upon a physical landing (such as triggering the payload drop). `drone_controller` dynamically caches the original launch vector and initiates a manual return path, fully bypassing this native FCU quirk.
+2. **Camera Target Watchdogs:** The vision loop runs on ROS 2 `qos_profile_sensor_data` which traditionally caches the last broadcast frame indefinitely. A timestamp watchdog instantly severs the ALIGN routine if the camera connection halts, preventing "Ghost Tracking" into obstacles.
+3. **Barometric Drift:** Takes off using a relaxed Z-axis ground constraint (`< 1.0m`) coupled with explicit boolean command persistence, preventing the vehicle from deadlocking its motors on the pad during fluctuating barometric weather conditions.
+4. **Smart Vision Muting:** QR Code target scanning is entirely suspended during the RTL return phase to guarantee that stray target boards don't corrupt the final GPS-derived landing.
 
 ## Mission Flow
 
